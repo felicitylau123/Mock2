@@ -1,0 +1,181 @@
+﻿@* @page "/mtasks"
+@using Mock2.Client.Static
+@using Mock2.Shared.Domain
+@inject HttpClient _client
+@inject IJSRuntime js
+@attribute [Authorize]
+@inject HttpInterceptorService _interceptor
+@implements IDisposable
+
+<h3 class="card-title">Task Management</h3>
+
+<br />
+
+@if (Tasks == null)
+{
+    <div class="alert alert-info">Loading tasks...</div>
+}
+else
+{
+    <table class="table table-responsive" id="tasksTable">
+        <thead>
+            <tr>
+                <th>Task Name</th>
+                <th>Is Completed</th>
+                <th>Due Date</th>
+                <th>Created Date</th>
+                <th>Created By</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var task in Tasks)
+            {
+                <tr>
+                    <td>@task.TaskName</td>
+                    <td>@(task.IsCompleted ? "Yes" : "No")</td>
+                    <td>@task.DueDate.ToString("MM/dd/yyyy")</td>
+                    <td>@task.CreatedDate.ToString("MM/dd/yyyy")</td>
+                    <td>@task.CreatedBy</td>
+                    <td>
+                        <a href="/mtasks/view/@task.Id" class="btn btn-primary">
+                            <span class="oi oi-book"></span>
+                        </a>
+                        <a href="/mtasks/edit/@task.Id" class="btn btn-warning">
+                            <span class="oi oi-pencil"></span>
+                        </a>
+                        <button class="btn btn-danger" @onclick="@(()=>DeleteTask(task.Id))">
+                            <span class="oi oi-delete"></span>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Mtask>? Tasks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Tasks = await _client.GetFromJsonAsync<List<Mtask>>($"{Endpoints.MtasksEndpoint}");
+    }
+
+    private async Task DeleteTask(int taskId)
+    {
+        if (Tasks != null)
+        {
+            var taskToDelete = Tasks.FirstOrDefault(t => t.Id == taskId);
+            if (taskToDelete != null)
+            {
+                var confirm = await js.InvokeAsync<bool>("confirm", $"Do you want to delete task {taskToDelete.TaskName}?");
+                if (confirm)
+                {
+                    await _client.DeleteAsync($"{Endpoints.MtasksEndpoint}/{taskId}");
+                    await OnInitializedAsync();
+                }
+            }
+        }
+    }
+    // protected async override Task OnAfterRenderAsync(bool firstRender)
+    // {
+    //     await js.InvokeVoidAsync("AddDataTable", "#tasksTable");
+    // }
+
+    public void Dispose()
+    {
+        _interceptor.DisposeEvent();
+        js.InvokeVoidAsync("DataTablesDispose", "#categoriesTable");
+    }
+}
+ *@
+
+@page "/mtasks/"
+@using Mock2.Client.Static
+@using Mock2.Shared.Domain
+@inject HttpClient _client
+@inject IJSRuntime js
+@attribute [Authorize]
+@inject HttpInterceptorService _interceptor
+@implements IDisposable
+
+<h3 class="card-title">Task Management</h3>
+<a href="/mtasks/create/" class="btn btn-secondary">
+    <span class="oi oi-plus"></span>
+    Create New Task
+</a>
+@if (Tasks == null)
+{
+    <div class="alert alert-info">Loading tasks...</div>
+}
+else
+{
+    <table class="table table-responsive" id="tasksTable">
+        <thead>
+            <tr>
+                <th>Task Name</th>
+                <th>Is Completed</th>
+                <th>Due Date</th>
+                <th>Created Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var task in Tasks)
+            {
+                <tr>
+                    <td>@task.TaskName</td>
+                    <td>@(task.IsCompleted ? "Yes" : "No")</td>
+                    <td>@task.DueDate.ToString("MM/dd/yyyy")</td>
+                    <td>@task.CreatedDate.ToString("MM/dd/yyyy")</td>
+                    <td>
+                        <a href="/mtasks/view/@task.Id" class="btn btn-primary">
+                            <span class="oi oi-eye"></span>
+                        </a>
+                        <a href="/mtasks/edit/@task.Id" class="btn btn-warning">
+                            <span class="oi oi-pencil"></span>
+                        </a>
+                        <button class="btn btn-danger" @onclick="@(() => Delete(task.Id))">
+                            <span class="oi oi-delete"></span>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Mtask>? Tasks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Tasks = await _client.GetFromJsonAsync<List<Mtask>>($"{Endpoints.MtasksEndpoint}");
+    }
+
+    async Task Delete(int taskId)
+    {
+        if (Tasks != null)
+        {
+            var task = Tasks.First(q => q.Id == taskId);
+            var confirm = await js.InvokeAsync<bool>("confirm", $"Do you want to delete {task.TaskName}?");
+            if (confirm)
+            {
+                await _client.DeleteAsync($"{Endpoints.MtasksEndpoint}/{taskId}");
+                await OnInitializedAsync();
+            }
+        }
+    }
+
+    // protected async override Task OnAfterRenderAsync(bool firstRender)
+    // {
+    //     await js.InvokeVoidAsync("AddDataTable", "#tasksTable");
+    // }
+
+    public void Dispose()
+    {
+        _interceptor.DisposeEvent();
+        js.InvokeVoidAsync("DataTablesDispose", "#tasksTable");
+    }
+}
